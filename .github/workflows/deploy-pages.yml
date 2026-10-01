@@ -41,8 +41,11 @@ jobs:
           # -> project site is served from https://g0083.github.io/TDgame/
           VITE_BASE: /TDgame/
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+      # NOTE: actions/configure-pages is intentionally omitted.
+      # It calls the Pages site API, which 404s until Pages has been enabled,
+      # which made the first run fail. actions/deploy-pages enables Pages
+      # automatically on the first successful deployment, so no manual setup
+      # in Settings -> Pages is required.
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
