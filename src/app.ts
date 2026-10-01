@@ -31,7 +31,8 @@ const SCREENS: ScreenId[] = [
 export class App {
   private save: SaveData
   private screens: Map<ScreenId, Screen>
-  private battleView: BattleView | null = null
+  /** exposed for the automated tests (see scripts/test-tower-pos.ts) */
+  battleView: BattleView | null = null
   private currentStage: StageDef | null = null
   private currentMode: BattleMode = 'stage'
   private lastResult: BattleResult | null = null

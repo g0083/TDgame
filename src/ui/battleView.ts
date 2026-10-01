@@ -20,7 +20,8 @@ export interface BattleViewCallbacks {
 
 export class BattleView {
   readonly el: HTMLElement
-  private renderer: Renderer
+  /** exposed for the automated tests (see scripts/test-tower-pos.ts) */
+  renderer: Renderer
   private battle: Battle
   private cb: BattleViewCallbacks
   private mode: BattleMode

@@ -79,7 +79,11 @@ export function confirmDialog(title: string, message: string, okLabel: string, c
   })
 }
 
-/** Small helper to render a tower icon into a fresh canvas element. */
+/**
+ * Small helper to render an icon into a fresh canvas element.
+ * The draw callback receives a context already translated to the canvas
+ * centre, so centred artwork (e.g. drawTowerIcon) lands in the middle.
+ */
 export function iconCanvas(size: number): { canvas: HTMLCanvasElement; draw: (fn: (c: CanvasRenderingContext2D) => void) => void } {
   const dpr = Math.min(3, window.devicePixelRatio || 1)
   const canvas = document.createElement('canvas')
@@ -94,7 +98,10 @@ export function iconCanvas(size: number): { canvas: HTMLCanvasElement; draw: (fn
       if (!ctx) return
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, size, size)
+      ctx.save()
+      ctx.translate(size / 2, size / 2)
       fn(ctx)
+      ctx.restore()
     },
   }
 }

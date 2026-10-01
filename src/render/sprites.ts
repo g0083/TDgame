@@ -85,7 +85,14 @@ export function drawEnemyShape(
   }
 }
 
-/** Small icon used in the build bar and codex (24x24 box). */
+/**
+ * Draw a tower icon centred on the CURRENT canvas origin.
+ *
+ * The icon is authored in a 24x24 design space and centred on (0, 0), so the
+ * caller is responsible for positioning: either translate to the cell centre
+ * (battle field) or to the canvas centre (build bar / codex icons).
+ * `size` is the on-screen edge length in CSS pixels.
+ */
 export function drawTowerIcon(
   ctx: CanvasRenderingContext2D,
   def: TowerDef,
@@ -95,7 +102,6 @@ export function drawTowerIcon(
   const s = size / 24
   ctx.save()
   ctx.scale(s, s)
-  ctx.translate(12, 12)
   const c = evolvedColor ?? def.color
   const a = def.accent
   ctx.lineWidth = 2

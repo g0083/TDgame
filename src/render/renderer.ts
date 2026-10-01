@@ -166,6 +166,24 @@ export class Renderer {
     this.bgKey = map.id
   }
 
+  /**
+   * Test seam: repaint the canvas with only the tower layer on a blank
+   * background, so an automated test can measure icon placement without the
+   * map/path/enemies interfering. Returns nothing; inspect the canvas pixels.
+   */
+  debugDrawTowersOnly(b: Battle): void {
+    const ctx = this.ctx
+    const sx = (this.cssW / FIELD_W) * this.dpr
+    const sy = (this.cssH / FIELD_H) * this.dpr
+    ctx.setTransform(sx, 0, 0, sy, 0, 0)
+    ctx.fillStyle = '#000000'
+    ctx.fillRect(0, 0, FIELD_W, FIELD_H)
+    // no grid: the test measures the brightest pixels, so the background
+    // must stay pure black. A screenshot is still readable thanks to the
+    // red cell marker the test draws afterwards.
+    this.drawTowers(b, { hoverCell: null, selectedTowerId: null, showRanges: false, lowQuality: true })
+  }
+
   draw(b: Battle, opts: RenderOpts): void {
     const ctx = this.ctx
     const sx = (this.cssW / FIELD_W) * this.dpr
@@ -316,10 +334,12 @@ export class Renderer {
       const st = b.towerStats(t)
       const directional =
         t.def.kind !== 'support' && t.def.kind !== 'economy' && t.def.kind !== 'frost' && t.def.kind !== 'wall'
+      // drawTowerIcon draws centred on the current origin, so move to the cell
+      // centre and rotate about it (the icon's barrel points "up" by design,
+      // hence the +90 degree offset to line up with t.angle)
       ctx.save()
       ctx.translate(t.x, t.y)
       if (directional) ctx.rotate(t.angle + Math.PI / 2)
-      ctx.translate(-t.x, -t.y)
       drawTowerIcon(ctx, t.def, size, t.evolve?.color)
       ctx.restore()
 
