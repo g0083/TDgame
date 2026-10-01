@@ -1,9 +1,9 @@
 import { COLS, ROWS, pxToCell } from '../core/grid'
 import { fmt } from '../core/math'
-import { TOWERS } from '../data/towers'
+import { TOWERS, towerUpgradeCost } from '../data/towers'
 import { ABILITIES } from '../data/abilities'
 import { ENEMY_BY_ID } from '../data/enemies'
-import type { AbilityId, TowerId } from '../data/types'
+import type { AbilityId, TowerDef, TowerId } from '../data/types'
 import type { Battle, BattleMode, BattleResult } from '../game/battle'
 import type { Tower } from '../game/tower'
 import { Renderer } from '../render/renderer'
@@ -32,6 +32,8 @@ export class BattleView {
   private waveEl!: HTMLElement
   private bannerEl!: HTMLElement
   private buildBar!: HTMLElement
+  private towerBtnRow!: HTMLElement
+  private infoBtn!: HTMLButtonElement
   private abilityRow!: HTMLElement
   private waveBtn!: HTMLButtonElement
   private speedBtn!: HTMLButtonElement
@@ -135,8 +137,16 @@ export class BattleView {
     const wrap = h('div', { class: 'field-wrap' }, [this.canvas, overlay])
     this.mainEl = h('div', { class: 'battle-main' }, [wrap, this.previewEl])
 
-    // ── build bar ──
+    // ── build bar: scrollable tower buttons pinned left, info button right ──
     this.buildBar = h('div', { class: 'build-bar' })
+    this.towerBtnRow = h('div', { class: 'build-bar-scroll' })
+    this.infoBtn = h('button', {
+      class: 'build-info-btn',
+      text: '?',
+      'aria-label': 'tower info',
+      onclick: () => this.showBuildInfo(),
+    }) as HTMLButtonElement
+    this.buildBar.append(this.towerBtnRow, this.infoBtn)
 
     // ── tower info sheet ──
     this.sheet = h('div', { class: 'sheet' })
@@ -361,31 +371,61 @@ export class BattleView {
   // ── build bar ────────────────────────────────────────────
 
   refreshBuildBar(): void {
-    clear(this.buildBar)
+    clear(this.towerBtnRow)
     for (const def of TOWERS) {
       const locked = !!def.unlock && this.stagesClearedProvider() < def.unlock.stagesCleared
       const cost = this.battle.buildCost(def.id)
       const cant = !locked && this.battle.gold < cost
       const ic = iconCanvas(28)
       ic.draw((c) => drawTowerIcon(c, def, 28))
+      // tap = select for building, long-press (or right click) = full details
+      let pressTimer = 0
+      let suppressClick = false
       const btn = h(
         'button',
         {
           class: `tower-btn${locked ? ' locked' : ''}${cant ? ' cant' : ''}${
             this.selectedBuild === def.id ? ' selected' : ''
           }`,
-          onclick: () => this.selectBuild(def.id),
+          onclick: () => {
+            if (suppressClick) {
+              suppressClick = false
+              return
+            }
+            this.selectBuild(def.id)
+          },
+          oncontextmenu: (e: Event) => {
+            e.preventDefault()
+            suppressClick = true
+            this.showTowerInfo(def)
+          },
         },
         [
           ic.canvas,
-          h('span', { text: tn(def.name, def.nameJa).slice(0, 6) }),
+          h('span', { class: 'tb-name', text: tn(def.name, def.nameJa) }),
           h('span', { class: 'cost', text: locked ? '🔒' : String(cost) }),
         ],
       )
+      btn.addEventListener('pointerdown', () => {
+        pressTimer = window.setTimeout(() => {
+          pressTimer = 0
+          suppressClick = true
+          this.showTowerInfo(def)
+        }, 380)
+      })
+      const cancel = () => {
+        if (pressTimer) {
+          clearTimeout(pressTimer)
+          pressTimer = 0
+        }
+      }
+      btn.addEventListener('pointerup', cancel)
+      btn.addEventListener('pointercancel', cancel)
+      btn.addEventListener('pointerleave', cancel)
       btn.title = locked
         ? `${tn(def.name, def.nameJa)} — ${t('common.locked')}`
         : `${tn(def.name, def.nameJa)}: ${td(def.desc, def.descJa)}`
-      this.buildBar.appendChild(btn)
+      this.towerBtnRow.appendChild(btn)
     }
   }
 
@@ -403,8 +443,199 @@ export class BattleView {
     audio.play('click')
   }
 
+  /** Browsable list of every tower, opened from the "?" button. */
+  private showBuildInfo(): void {
+    clear(this.sheet)
+    this.sheet.appendChild(
+      h('div', { class: 'sheet-head' }, [
+        h('div', { class: 't' }, [h('strong', { text: t('codex.towers') })]),
+        h('button', { class: 'btn icon-btn ghost small', text: '✕', onclick: () => this.closeSheet() }),
+      ]),
+    )
+    this.sheet.appendChild(h('p', { class: 'sheet-desc', text: t('battle.pickTowerInfo') }))
+
+    const grid = h('div', { class: 'info-list' })
+    for (const def of TOWERS) {
+      const locked = !!def.unlock && this.stagesClearedProvider() < def.unlock.stagesCleared
+      const ic = iconCanvas(30)
+      ic.draw((c) => drawTowerIcon(c, def, 30))
+      grid.appendChild(
+        h(
+          'button',
+          { class: `info-row${locked ? ' locked' : ''}`, onclick: () => this.showTowerInfo(def) },
+          [
+            ic.canvas,
+            h('div', { class: 'grow' }, [
+              h('strong', { text: `${tn(def.name, def.nameJa)} · ${this.battle.buildCost(def.id)}💰` }),
+              h('small', { text: locked ? t('common.locked') : td(def.desc, def.descJa) }),
+            ]),
+            h('span', { text: '›' }),
+          ],
+        ),
+      )
+    }
+    this.sheet.appendChild(grid)
+    this.sheet.classList.add('show')
+  }
+
+  /** Full details for a tower type, shown before building. */
+  private showTowerInfo(def: TowerDef): void {
+    clear(this.sheet)
+    const locked = !!def.unlock && this.stagesClearedProvider() < def.unlock.stagesCleared
+    const cost = this.battle.buildCost(def.id)
+    const meta = this.battle.meta
+
+    const ic = iconCanvas(44)
+    ic.draw((c) => drawTowerIcon(c, def, 44))
+    this.sheet.appendChild(
+      h('div', { class: 'sheet-head' }, [
+        ic.canvas,
+        h('div', { class: 't' }, [
+          h('strong', { text: tn(def.name, def.nameJa) }),
+          h('small', { text: locked ? t('common.locked') : `${t('common.gold')} ${cost}` }),
+        ]),
+        h('button', { class: 'btn icon-btn ghost small', text: '✕', onclick: () => this.closeSheet() }),
+      ]),
+    )
+    this.sheet.appendChild(h('p', { class: 'sheet-desc', text: td(def.desc, def.descJa) }))
+    this.sheet.appendChild(this.traitTags(def))
+    if (locked) {
+      this.sheet.appendChild(
+        h('div', { class: 'hint', text: `${t('menu.stages')} ${def.unlock!.stagesCleared} ${t('battle.clearStage')} →` }),
+      )
+    }
+
+    // level table (with research bonuses applied)
+    const table = h('div', { class: 'lvl-table' })
+    table.appendChild(
+      h('div', { class: 'lvl-row head' }, [
+        h('span', { text: 'Lv' }),
+        h('span', { text: t('codex.damage') }),
+        h('span', { text: t('codex.range') }),
+        h('span', { text: t('codex.rate') }),
+        h('span', { text: t('codex.cost') }),
+      ]),
+    )
+    for (let lv = 1; lv <= def.maxLevel; lv++) {
+      const raw = def.levels[lv - 1]
+      table.appendChild(
+        h('div', { class: 'lvl-row' }, [
+          h('span', { text: String(lv) }),
+          h('span', { text: fmt(raw.damage * meta.damageMul) }),
+          h('span', { text: fmt(raw.range * meta.rangeMul) }),
+          h('span', { text: `${(meta.rateMul / raw.cooldown).toFixed(2)}/s` }),
+          h('span', { text: lv > 1 ? fmt(this.upgradeCostFor(def, lv)) : '—' }),
+        ]),
+      )
+    }
+    this.sheet.appendChild(table)
+
+    // extra properties present on the top level
+    const l4 = def.levels[def.levels.length - 1]
+    const extras: string[] = []
+    if (l4.splash) extras.push(`${t('codex.splash')} ${fmt(l4.splash)}`)
+    if (l4.chains) extras.push(`${t('codex.chains')} ${l4.chains}`)
+    if (l4.slow) extras.push(`${t('codex.slow')} ${Math.round(l4.slow * 100)}%`)
+    if (l4.burn) extras.push(`${t('codex.burn')} ${fmt(l4.burn * meta.dotMul)}/s`)
+    if (l4.poison) extras.push(`${t('codex.poison')} ${fmt(l4.poison * meta.dotMul)}/s`)
+    if (l4.crit) extras.push(`CRIT ${Math.round(l4.crit * 100)}%`)
+    if (l4.pierce) extras.push(`${t('codex.pierce')} ${Math.round(l4.pierce * 100)}%`)
+    if (l4.gold) extras.push(`${t('codex.income')} ${fmt(l4.gold * meta.mineMul)}/s`)
+    if (extras.length) {
+      this.sheet.appendChild(h('div', { class: 'preview-hint', text: `${t('codex.properties')}: ${extras.join(' · ')}` }))
+    }
+    const canAir = def.id === 'mortar' || def.id === 'sniper' || def.id === 'beam' || def.id === 'tesla'
+    this.sheet.appendChild(
+      h('div', {
+        class: 'preview-hint',
+        text: `${t('codex.targets')}: ${t('codex.ground')}${canAir ? ` + ${t('codex.air')}` : ''} · ${t('codex.dmgType')} ${t(`codex.dmg.${def.damageType}`)}`,
+      }),
+    )
+
+    // adjacency synergy
+    if (def.synergy) {
+      const partner = TOWERS.find((x) => x.id === def.synergy!.with)
+      this.sheet.appendChild(
+        h('div', { class: 'synergy-note' }, [
+          h('span', { class: 'pill gold', text: '⚡' }),
+          h('span', {
+            text: `${tn(def.synergy.label, def.synergy.labelJa)} (${tn(partner?.name ?? '', partner?.nameJa ?? '')})`,
+          }),
+        ]),
+      )
+    }
+
+    // evolution branches
+    if (def.evolves) {
+      this.sheet.appendChild(h('div', { class: 'hint', text: `${t('battle.evolve')} (Lv${def.maxLevel})` }))
+      const grid = h('div', { class: 'evo-grid' })
+      for (const e of def.evolves) {
+        grid.appendChild(
+          h('div', { class: 'evo-card', style: `border-color:${e.color}66` }, [
+            h('strong', { text: tn(e.name, e.nameJa), style: `color:${e.color}` }),
+            h('small', { text: td(e.desc, e.descJa) }),
+          ]),
+        )
+      }
+      this.sheet.appendChild(grid)
+    }
+    this.sheet.classList.add('show')
+  }
+
   /** Provided by the app so the build bar can gate unlocks. */
   stagesClearedProvider: () => number = () => 99
+
+  // ── tower reference sheet (available before building) ────
+
+  private upgradeCostFor(def: TowerDef, level: number): number {
+    return Math.round(towerUpgradeCost(def, level - 1) * this.battle.meta.upgradeCostMul)
+  }
+
+  /** Short chips describing what a tower is good against. */
+  private traitTags(def: TowerDef): HTMLElement {
+    const row = h('div', { class: 'tags' })
+    const add = (s: string) => row.appendChild(h('span', { class: 'tag', text: s }))
+    switch (def.id) {
+      case 'arrow':
+        add(`${t('trait.fast')} · ${t('trait.cheap')}`)
+        break
+      case 'cannon':
+        add(`${t('trait.swarm')} · ${t('trait.splash')}`)
+        break
+      case 'mortar':
+        add(`${t('trait.air')} · ${t('trait.boss')}`)
+        break
+      case 'frost':
+        add(`${t('trait.slow')} · ${t('trait.aoe')}`)
+        break
+      case 'tesla':
+        add(`${t('trait.chain')} · ${t('trait.armor')}`)
+        break
+      case 'poison':
+        add(`${t('trait.tank')} · ${t('trait.dot')}`)
+        break
+      case 'sniper':
+        add(`${t('trait.crit')} · ${t('trait.pierce')}`)
+        break
+      case 'beam':
+        add(`${t('trait.aoe')} · ${t('trait.air')}`)
+        break
+      case 'flame':
+        add(`${t('trait.swarm')} · ${t('trait.area')}`)
+        break
+      case 'amp':
+        add(`${t('trait.buff')} · ${t('trait.economy')}`)
+        break
+      case 'mine':
+        add(`${t('trait.income')} · ${t('trait.maze')}`)
+        break
+      case 'wall':
+        add(`${t('trait.maze')} · ${t('trait.slow')}`)
+        break
+    }
+    if (def.synergy) row.appendChild(h('span', { class: 'tag gold', text: `⚡ ${t('trait.synergy')}` }))
+    return row
+  }
 
 
   // ── tower sheet ──────────────────────────────────────────

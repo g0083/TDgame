@@ -85,6 +85,40 @@ async function main(): Promise<void> {
   console.log('canvas box:', canvasBox)
   console.log('build bar buttons:', await page.locator('.build-bar .tower-btn').count())
   console.log('ability buttons:', await page.locator('.ability-btn').count())
+  console.log('info button:', await page.locator('.build-info-btn').count())
+  // long-press a tower button → details, without selecting it for building
+  const firstBtn = page.locator('.build-bar .tower-btn').first()
+  const bb = await firstBtn.boundingBox()
+  if (bb) {
+    await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2)
+    await page.mouse.down()
+    await page.waitForTimeout(600)
+    await page.mouse.up()
+    await page.waitForTimeout(400)
+    console.log('long-press opened detail:', await page.locator('.sheet.show').count())
+    console.log('no build selection leaked:', await page.locator('.tower-btn.selected').count())
+    await page.screenshot({ path: 'dist-test/smoke-longpress.png' })
+    await page.evaluate(() => document.querySelector<HTMLButtonElement>('.sheet-head .btn.icon-btn')?.click())
+    await page.waitForTimeout(300)
+  }
+  await page.screenshot({ path: 'dist-test/smoke-buildbar.png' })
+
+  // ── tower reference must be readable BEFORE building anything ──
+  await page.evaluate(() => document.querySelector<HTMLButtonElement>('.build-info-btn')?.click())
+  await page.waitForTimeout(400)
+  console.log('info sheet open:', await page.locator('.sheet.show').count())
+  console.log('info rows:', await page.locator('.info-row').count())
+  await page.screenshot({ path: 'dist-test/smoke-tower-list.png' })
+  await page.evaluate(() => document.querySelector<HTMLButtonElement>('.info-row')?.click())
+  await page.waitForTimeout(400)
+  console.log('tower detail rows:', await page.locator('.lvl-row').count())
+  console.log('trait chips:', await page.locator('.sheet .tag').count())
+  console.log('description len:', ((await page.textContent('.sheet-desc')) ?? '').length)
+  console.log('evo branches:', await page.locator('.evo-card').count())
+  await page.screenshot({ path: 'dist-test/smoke-tower-detail.png' })
+  await page.evaluate(() => document.querySelector<HTMLButtonElement>('.sheet-head .btn.icon-btn')?.click())
+  await page.waitForTimeout(300)
+  console.log('sheet closed:', (await page.locator('.sheet.show').count()) === 0)
 
   await page.locator('.build-bar .tower-btn').first().click({ force: true })
   const clickField = async (fx: number, fy: number) => {
