@@ -47,6 +47,7 @@ const dict = {
     'タップで設置。? ボタン、または Individual ボタンを長押しで詳細を確認できます。',
   ],
   'battle.clearStage': ['クリアで解放', 'クリアで解放'],
+  'battle.towerInfo': ['タワー情報', 'タワー情報'],
   'battle.upgrade': ['強化', '強化'],
   'battle.evolve': ['進化する', '進化する'],
   'battle.sell': ['売却', '売却'],

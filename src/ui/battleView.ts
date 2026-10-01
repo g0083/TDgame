@@ -4,6 +4,7 @@ import { TOWERS, towerUpgradeCost } from '../data/towers'
 import { ABILITIES } from '../data/abilities'
 import { ENEMY_BY_ID } from '../data/enemies'
 import type { AbilityId, TowerDef, TowerId } from '../data/types'
+import { icon, iconText } from './icons'
 import type { Battle, BattleMode, BattleResult } from '../game/battle'
 import type { Tower } from '../game/tower'
 import { Renderer } from '../render/renderer'
@@ -104,13 +105,13 @@ export class BattleView {
     }) as HTMLButtonElement
     const quitBtn = h('button', {
       class: 'btn icon-btn ghost small',
-      text: '✕',
       'aria-label': 'menu',
       onclick: () => this.askExit(),
     })
+    quitBtn.appendChild(icon('cross'))
 
     const hud = h('div', { class: 'hud' }, [
-      h('div', { class: 'stat gold' }, [h('span', { text: '💰' }), this.goldEl]),
+      h('div', { class: 'stat gold' }, [h('span', { class: 'ico-wrap' }, [icon('coin')]), this.goldEl]),
       h('div', { class: 'stat lives' }, [h('span', { text: '❤️' }), this.livesEl]),
       h('div', { class: 'spacer' }),
       this.waveEl,
@@ -142,10 +143,10 @@ export class BattleView {
     this.towerBtnRow = h('div', { class: 'build-bar-scroll' })
     this.infoBtn = h('button', {
       class: 'build-info-btn',
-      text: '?',
-      'aria-label': 'tower info',
+      'aria-label': t('battle.towerInfo'),
       onclick: () => this.showBuildInfo(),
     }) as HTMLButtonElement
+    this.infoBtn.appendChild(icon('info'))
     this.buildBar.append(this.towerBtnRow, this.infoBtn)
 
     // ── tower info sheet ──
@@ -159,10 +160,11 @@ export class BattleView {
     for (const a of ABILITIES) {
       const btn = h('button', {
         class: 'ability-btn',
-        text: a.icon,
         title: tn(a.name, a.nameJa),
+        'aria-label': tn(a.name, a.nameJa),
         onclick: () => this.useAbility(a.id),
       })
+      btn.appendChild(icon(a.icon))
       btn.dataset.ability = a.id
       const charge = h('span', { class: 'charges', text: '0' })
       btn.appendChild(charge)
@@ -287,16 +289,26 @@ export class BattleView {
 
     // counter hints, derived from the traits present in this wave
     const ids = new Set(list.map((x) => x.id))
-    const hints: string[] = []
-    if (ids.has('armored') || ids.has('juggernaut') || ids.has('boss_titan')) hints.push('⚡ <b>tesla</b> / <b>beam</b>')
-    if (ids.has('flyer')) hints.push('🔫 <b>mortar</b> / <b>sniper</b>')
-    if (ids.has('healer')) hints.push('💊 kill the <b>Medic</b> first')
-    if (ids.has('swarmer') || ids.has('splitter')) hints.push('💥 <b>cannon</b> / <b>mortar</b>')
-    if (ids.has('stealth')) hints.push('👁 watch the early game')
-    if (ids.has('cursed')) hints.push('❄️ slowing is useless — use <b>damage</b>')
-    if (ids.has('boss_rush') || ids.has('boss_swarm') || ids.has('boss_titan')) hints.push('👑 <b>boss</b>')
+    const hints: [string, string][] = []
+    if (ids.has('armored') || ids.has('juggernaut') || ids.has('boss_titan'))
+      hints.push(['bolt', '<b>tesla</b> / <b>beam</b>'])
+    if (ids.has('flyer')) hints.push(['crosshair', '<b>mortar</b> / <b>sniper</b>'])
+    if (ids.has('healer')) hints.push(['syringe', 'kill the <b>Medic</b> first'])
+    if (ids.has('swarmer') || ids.has('splitter'))
+      hints.push(['burst', '<b>cannon</b> / <b>mortar</b>'])
+    if (ids.has('stealth')) hints.push(['eyeOff', 'watch the early game'])
+    if (ids.has('cursed')) hints.push(['snowflake', 'slowing is useless — use <b>damage</b>'])
+    if (ids.has('boss_rush') || ids.has('boss_swarm') || ids.has('boss_titan'))
+      hints.push(['crown', '<b>boss</b>'])
     if (hints.length > 0) {
-      this.previewEl.appendChild(h('div', { class: 'preview-hint', html: hints.join(' · ') }))
+      const hintRow = h('div', { class: 'preview-hint' })
+      hints.forEach(([name, html], i) => {
+        if (i > 0) hintRow.appendChild(h('span', { class: 'hint-sep', text: '·' }))
+        hintRow.appendChild(h('span', { class: 'hint-item' }, [icon(name)]))
+        const txt = h('span', { html })
+        hintRow.appendChild(txt)
+      })
+      this.previewEl.appendChild(hintRow)
     }
   }
 
@@ -403,7 +415,7 @@ export class BattleView {
         [
           ic.canvas,
           h('span', { class: 'tb-name', text: tn(def.name, def.nameJa) }),
-          h('span', { class: 'cost', text: locked ? '🔒' : String(cost) }),
+          h('span', { class: 'cost' }, locked ? [icon('lock')] : [String(cost)]),
         ],
       )
       btn.addEventListener('pointerdown', () => {
@@ -449,7 +461,7 @@ export class BattleView {
     this.sheet.appendChild(
       h('div', { class: 'sheet-head' }, [
         h('div', { class: 't' }, [h('strong', { text: t('codex.towers') })]),
-        h('button', { class: 'btn icon-btn ghost small', text: '✕', onclick: () => this.closeSheet() }),
+        this.closeSheetBtn(),
       ]),
     )
     this.sheet.appendChild(h('p', { class: 'sheet-desc', text: t('battle.pickTowerInfo') }))
@@ -466,7 +478,14 @@ export class BattleView {
           [
             ic.canvas,
             h('div', { class: 'grow' }, [
-              h('strong', { text: `${tn(def.name, def.nameJa)} · ${this.battle.buildCost(def.id)}💰` }),
+              h(
+              'strong',
+              {},
+              [
+                `${tn(def.name, def.nameJa)} · `,
+                iconText('coin', String(this.battle.buildCost(def.id))),
+              ],
+            ),
               h('small', { text: locked ? t('common.locked') : td(def.desc, def.descJa) }),
             ]),
             h('span', { text: '›' }),
@@ -494,7 +513,7 @@ export class BattleView {
           h('strong', { text: tn(def.name, def.nameJa) }),
           h('small', { text: locked ? t('common.locked') : `${t('common.gold')} ${cost}` }),
         ]),
-        h('button', { class: 'btn icon-btn ghost small', text: '✕', onclick: () => this.closeSheet() }),
+        this.closeSheetBtn(),
       ]),
     )
     this.sheet.appendChild(h('p', { class: 'sheet-desc', text: td(def.desc, def.descJa) }))
@@ -557,7 +576,7 @@ export class BattleView {
       const partner = TOWERS.find((x) => x.id === def.synergy!.with)
       this.sheet.appendChild(
         h('div', { class: 'synergy-note' }, [
-          h('span', { class: 'pill gold', text: '⚡' }),
+          h('span', { class: 'pill gold' }, [icon('bolt')]),
           h('span', {
             text: `${tn(def.synergy.label, def.synergy.labelJa)} (${tn(partner?.name ?? '', partner?.nameJa ?? '')})`,
           }),
@@ -633,7 +652,11 @@ export class BattleView {
         add(`${t('trait.maze')} · ${t('trait.slow')}`)
         break
     }
-    if (def.synergy) row.appendChild(h('span', { class: 'tag gold', text: `⚡ ${t('trait.synergy')}` }))
+    if (def.synergy) {
+      const st = h('span', { class: 'tag gold' }, [icon('bolt')])
+      st.appendChild(document.createTextNode(` ${t('trait.synergy')}`))
+      row.appendChild(st)
+    }
     return row
   }
 
@@ -648,6 +671,17 @@ export class BattleView {
   private closeSheet(): void {
     this.selectedTowerId = null
     this.hideSheet()
+  }
+
+  /** Shared "close" button for the sheets. */
+  private closeSheetBtn(): HTMLButtonElement {
+    const b = h('button', {
+      class: 'btn icon-btn ghost small',
+      'aria-label': t('common.close'),
+      onclick: () => this.closeSheet(),
+    }) as HTMLButtonElement
+    b.appendChild(icon('cross'))
+    return b
   }
 
   private showSheet(tower: Tower): void {
@@ -666,7 +700,7 @@ export class BattleView {
     const head = h('div', { class: 'sheet-head' }, [
       ic.canvas,
       h('div', { class: 't' }, [h('strong', { text: name }), h('small', { text: sub })]),
-      h('button', { class: 'btn icon-btn ghost small', text: '✕', onclick: () => this.closeSheet() }),
+      this.closeSheetBtn(),
     ])
 
     const nextSt = b.previewUpgrade(tower)
@@ -695,21 +729,21 @@ export class BattleView {
     const actions = h('div', { class: 'sheet-actions' })
     if (nextSt) {
       const cost = b.upgradeCost(tower)
-      actions.appendChild(
-        h('button', {
-          class: 'btn primary',
-          html: `${t('battle.upgrade')}<br><small>${cost} 💰</small>`,
-          disabled: b.gold < cost,
-          onclick: () => {
-            if (b.upgrade(tower)) {
-              this.cb.haptics()
-              this.showSheet(tower)
-              this.refreshBuildBar()
-              this.refreshHud()
-            }
-          },
-        }),
-      )
+      const upBtn = h('button', {
+        class: 'btn primary',
+        disabled: b.gold < cost,
+        onclick: () => {
+          if (b.upgrade(tower)) {
+            this.cb.haptics()
+            this.showSheet(tower)
+            this.refreshBuildBar()
+            this.refreshHud()
+          }
+        },
+      })
+      upBtn.append(t('battle.upgrade'))
+      upBtn.appendChild(h('small', {}, [iconText('coin', String(cost))]))
+      actions.appendChild(upBtn)
     }
     actions.appendChild(
       h('button', {
@@ -721,19 +755,19 @@ export class BattleView {
         },
       }),
     )
-    actions.appendChild(
-      h('button', {
-        class: 'btn danger small',
-        html: `${t('battle.sell')}<br><small>${b.sellValue(tower)} 💰</small>`,
-        onclick: () => {
-          b.sell(tower)
-          this.selectedTowerId = null
-          this.closeSheet()
-          this.refreshBuildBar()
-          this.refreshHud()
-        },
-      }),
-    )
+    const sellBtn = h('button', {
+      class: 'btn danger small',
+      onclick: () => {
+        b.sell(tower)
+        this.selectedTowerId = null
+        this.closeSheet()
+        this.refreshBuildBar()
+        this.refreshHud()
+      },
+    })
+    sellBtn.append(t('battle.sell'))
+    sellBtn.appendChild(h('small', {}, [iconText('coin', String(b.sellValue(tower)))]))
+    actions.appendChild(sellBtn)
 
     this.sheet.append(head, grid, actions)
 
@@ -758,10 +792,9 @@ export class BattleView {
               h('strong', { text: tn(e.name, e.nameJa), style: `color:${e.color}` }),
               h('small', { text: td(e.desc, e.descJa) }),
               h('div', {
-                class: 'pill gold',
-                text: `${b.evolveCost(tower)} 💰`,
-                style: 'margin-top:6px;display:inline-block',
-              }),
+              class: 'pill gold',
+              style: 'margin-top:6px;display:inline-block',
+            }, [iconText('coin', String(b.evolveCost(tower)))]),
             ],
           ),
         )

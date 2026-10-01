@@ -13,6 +13,7 @@ import { drawTowerIcon } from './render/sprites'
 import { audio } from './audio/synth'
 import { getLang, setLang, t, td, tn, type TKey } from './util/i18n'
 import { clear, confirmDialog, h, iconCanvas, toast } from './ui/dom'
+import { icon, iconText } from './ui/icons'
 import { createShell, setScreen, type Screen, type ScreenId } from './ui/shell'
 import { BattleView } from './ui/battleView'
 
@@ -27,6 +28,26 @@ const SCREENS: ScreenId[] = [
   'daily',
   'achievements',
 ]
+
+/** A row of `total` stars, the first `n` of them lit. Replaces ★/☆ text. */
+function starRow(n: number, cls = ''): HTMLElement {
+  const row = h('div', { class: `star-row${cls ? ` ${cls}` : ''}` })
+  for (let i = 0; i < 3; i++) {
+    row.appendChild(h('span', { class: i < n ? 'star on' : 'star' }, [icon(i < n ? 'star' : 'starOff')]))
+  }
+  return row
+}
+
+/** Header back arrow shared by the meta screens. */
+function backBtn(onBack: () => void): HTMLButtonElement {
+  const b = h('button', {
+    class: 'btn icon-btn ghost',
+    'aria-label': t('menu.back'),
+    onclick: onBack,
+  }) as HTMLButtonElement
+  b.appendChild(icon('arrowLeft'))
+  return b
+}
 
 export class App {
   private save: SaveData
@@ -108,22 +129,22 @@ export class App {
   showTitle(): void {
     const s = setScreen(this.screens, 'title')
     clear(s.body)
-    const coins = h('div', { class: 'coins', text: `💰 ${fmt(this.save.coins)}` })
+    const coins = h('div', { class: 'coins' }, [iconText('coin', fmt(this.save.coins))])
     const hero = h('div', { class: 'hero' }, [
       h('div', { class: 'logo', text: t('app.title') }),
       h('div', { class: 'sub', text: t('app.subtitle') }),
       coins,
     ])
 
-    const mk = (emoji: string, label: string, sub: string, onclick: () => void, extraClass = '') => {
+    const mk = (iconName: string, label: string, sub: string, onclick: () => void, extraClass = '') => {
       audio.play('click')
       return h(
         'button',
         { class: `btn ${extraClass}`, onclick },
         [
-          h('span', { class: 'emoji', text: emoji }),
+          h('span', { class: 'menu-ico' }, [icon(iconName)]),
           h('span', { class: 'grow' }, [h('span', { text: label }), h('span', { class: 'sub-label', text: sub })]),
-          h('span', { text: '›' }),
+          h('span', { class: 'chev' }, [icon('chevronRight')]),
         ],
       )
     }
@@ -132,10 +153,10 @@ export class App {
     const dailyDone = this.save.lastDaily === daily.key && this.save.dailyBest >= daily.goal
 
     const menu = h('div', { class: 'menu-list' }, [
-      mk('🎮', t('menu.play'), `${this.save.stagesCleared}/${STAGES.length} ${t('menu.stages')}`, () => this.showStages(), 'primary'),
-      mk('♾️', t('menu.endless'), `${t('arena.best', { n: this.save.endlessBest })}`, () => this.startEndless('endless')),
+      mk('play', t('menu.play'), `${this.save.stagesCleared}/${STAGES.length} ${t('menu.stages')}`, () => this.showStages(), 'primary'),
+      mk('infinite', t('menu.endless'), `${t('arena.best', { n: this.save.endlessBest })}`, () => this.startEndless('endless')),
       mk(
-        '🏆',
+        'trophy',
         t('menu.arena'),
         this.meta.arenaUnlocked ? t('arena.best', { n: this.save.arenaBest }) : t('common.locked'),
         () => {
@@ -143,11 +164,11 @@ export class App {
           else toast(t('arena.locked'))
         },
       ),
-      mk('📅', t('menu.daily'), dailyDone ? t('daily.done') : t('daily.goal', { n: daily.goal }), () => this.showDaily()),
-      mk('🧪', t('menu.lab'), `${t('lab.points')}: ${this.save.coins}`, () => this.showLab()),
-      mk('📖', t('menu.codex'), t('codex.towers'), () => this.showCodex()),
-      mk('🏅', t('ach.title'), `${this.save.achievements.length}/${ACHIEVEMENTS.length}`, () => this.showAchievements()),
-      mk('⚙️', t('menu.settings'), '', () => this.showSettings()),
+      mk('calendar', t('menu.daily'), dailyDone ? t('daily.done') : t('daily.goal', { n: daily.goal }), () => this.showDaily()),
+      mk('flask', t('menu.lab'), `${t('lab.points')}: ${this.save.coins}`, () => this.showLab()),
+      mk('book', t('menu.codex'), t('codex.towers'), () => this.showCodex()),
+      mk('medal', t('ach.title'), `${this.save.achievements.length}/${ACHIEVEMENTS.length}`, () => this.showAchievements()),
+      mk('gear', t('menu.settings'), '', () => this.showSettings()),
     ])
 
     s.body.append(hero, menu)
@@ -159,7 +180,7 @@ export class App {
     clear(s.body)
     s.body.appendChild(
       h('div', { class: 'screen-header' }, [
-        h('button', { class: 'btn icon-btn ghost', text: '←', onclick: () => this.showTitle() }),
+        backBtn(() => this.showTitle()),
         h('div', { class: 'screen-title', text: t('menu.stages') }),
       ]),
     )
@@ -179,12 +200,12 @@ export class App {
             h('small', {
               text: locked
                 ? `${t('common.locked')} (${t('menu.stages')} ${st.unlock!.stagesCleared})`
-                : `${t('battle.wave')} ${st.waves.length} · ${'★'.repeat(stars)}${'☆'.repeat(
-                    Math.max(0, 3 - stars),
-                  )} · ${t('common.lives')} ${st.lives}`,
+                : `${t('battle.wave')} ${st.waves.length}`,
             }),
+            locked ? null : starRow(stars),
+            locked ? null : h('small', { text: `${t('common.lives')} ${st.lives}` }),
           ]),
-          h('span', { text: locked ? '🔒' : '›' }),
+          locked ? h('span', { class: 'trail' }, [icon('lock')]) : h('span', { class: 'trail' }, [icon('chevronRight')]),
         ],
       )
       s.body.appendChild(card)
@@ -354,7 +375,7 @@ export class App {
       if (a.progress(snap) >= a.goal) {
         this.save.achievements.push(a.id)
         earned += a.reward
-        setTimeout(() => toast(`🏅 ${tn(a.name, a.nameJa)}`, 'gold', 2400), 300)
+        setTimeout(() => toast(`${tn(a.name, a.nameJa)} +${a.reward}`, 'gold', 2400), 300)
       }
     }
     if (earned > 0) this.save.coins += earned
@@ -379,7 +400,7 @@ export class App {
     let stars: HTMLElement | null = null
     if (res.victory && res.mode === 'stage' && res.stageId) {
       const n = this.save.stageStars[res.stageId] ?? 0
-      stars = h('div', { class: 'stars', text: '★'.repeat(n) + '☆'.repeat(Math.max(0, 3 - n)) })
+      stars = starRow(n, 'stars')
     }
 
     const card = h('div', { class: 'result-card' }, [
@@ -433,7 +454,7 @@ export class App {
 
     s.body.appendChild(
       h('div', { class: 'screen-header' }, [
-        h('button', { class: 'btn icon-btn ghost', text: '←', onclick: () => this.showTitle() }),
+        backBtn(() => this.showTitle()),
         h('div', { class: 'screen-title', text: t('daily.title') }),
       ]),
     )
@@ -475,9 +496,9 @@ export class App {
     clear(s.body)
     s.body.appendChild(
       h('div', { class: 'screen-header' }, [
-        h('button', { class: 'btn icon-btn ghost', text: '←', onclick: () => this.showTitle() }),
+        backBtn(() => this.showTitle()),
         h('div', { class: 'screen-title', text: t('lab.title') }),
-        h('div', { class: 'pill gold', text: `💰 ${fmt(this.save.coins)}` }),
+        h('div', { class: 'pill gold' }, [iconText('coin', fmt(this.save.coins))]),
       ]),
     )
 
@@ -516,7 +537,7 @@ export class App {
       }
 
       const card = h('div', { class: 'research-card' }, [
-        h('div', { class: 'ico', text: def.icon }),
+        h('div', { class: 'ico' }, [icon(def.icon)]),
         h('div', { class: 'body' }, [
           h('strong', { text: `${tn(def.name, def.nameJa)}  ${rank}/${def.maxRank}` }),
           h('small', { text: td(def.desc, def.descJa) }),
@@ -525,7 +546,7 @@ export class App {
         ]),
         h('button', {
           class: 'btn small buy primary',
-          text: maxed ? t('lab.max') : `💰 ${fmt(cost)}`,
+          text: maxed ? t('lab.max') : fmt(cost),
           disabled: maxed || !afford,
           onclick: () => this.buyResearch(def.id),
         }),
@@ -560,7 +581,7 @@ export class App {
     clear(s.body)
     s.body.appendChild(
       h('div', { class: 'screen-header' }, [
-        h('button', { class: 'btn icon-btn ghost', text: '←', onclick: () => this.showTitle() }),
+        backBtn(() => this.showTitle()),
         h('div', { class: 'screen-title', text: t('codex.title') }),
       ]),
     )
@@ -595,7 +616,7 @@ export class App {
           h('div', { class: 'codex-item' }, [
             h('div', { class: 'ico' }, [ic.canvas]),
             h('div', { class: 'body' }, [
-              h('strong', { text: `${tn(def.name, def.nameJa)} · ${def.cost}💰` }),
+              h('strong', {}, [`${tn(def.name, def.nameJa)} · `, iconText('coin', String(def.cost))]),
               h('small', { text: unlockTxt }),
               h('div', { class: 'tags' }, [
                 h('span', { class: 'tag', text: `Lv1 ${def.levels[0].damage}` }),
@@ -617,14 +638,14 @@ export class App {
         const tags = def.traits.map((tr) => h('span', { class: 'tag', text: tr }))
         s.body.appendChild(
           h('div', { class: 'codex-item' }, [
-            h('div', { class: 'ico', style: `background:${def.accent}55`, text: def.boss ? '👑' : '👾' }),
+            h('div', { class: 'ico', style: `background:${def.accent}55` }, [icon(def.boss ? 'crown' : 'skull')]),
             h('div', { class: 'body' }, [
               h('strong', { text: tn(def.name, def.nameJa) }),
               h('small', { text: td(def.desc, def.descJa) }),
               h('div', { class: 'tags' }, [
                 h('span', { class: 'tag', text: `HP ${def.hp}` }),
                 h('span', { class: 'tag', text: `SPD ${def.speed}` }),
-                h('span', { class: 'tag', text: `💰 ${def.bounty}` }),
+                h('span', { class: 'tag' }, [iconText('coin', String(def.bounty))]),
                 ...tags,
               ]),
             ]),
@@ -641,7 +662,7 @@ export class App {
     clear(s.body)
     s.body.appendChild(
       h('div', { class: 'screen-header' }, [
-        h('button', { class: 'btn icon-btn ghost', text: '←', onclick: () => this.showTitle() }),
+        backBtn(() => this.showTitle()),
         h('div', { class: 'screen-title', text: t('ach.title') }),
         h('div', { class: 'pill gold', text: `${this.save.achievements.length}/${ACHIEVEMENTS.length}` }),
       ]),
@@ -653,14 +674,16 @@ export class App {
       const pct = Math.floor((p / a.goal) * 100)
       s.body.appendChild(
         h('div', { class: 'codex-item' }, [
-          h('div', { class: 'ico', text: a.icon }),
+          h('div', { class: 'ico' }, [icon(a.icon)]),
           h('div', { class: 'body' }, [
             h('strong', { text: tn(a.name, a.nameJa) }),
             h('small', { text: td(a.desc, a.descJa) }),
             h('small', { text: `${fmt(p)} / ${fmt(a.goal)} (${pct}%)` }),
             h('div', { class: 'rank-pips' }, [h('i', { class: 'on', style: `width:${pct}%` })]),
           ]),
-          h('span', { class: done ? 'pill accent' : 'pill gold', text: done ? '✓' : `+${a.reward}` }),
+          done
+            ? h('span', { class: 'pill accent' }, [icon('check')])
+            : h('span', { class: 'pill gold' }, [iconText('coin', `+${a.reward}`)]),
         ]),
       )
     }
@@ -673,7 +696,7 @@ export class App {
     clear(s.body)
     s.body.appendChild(
       h('div', { class: 'screen-header' }, [
-        h('button', { class: 'btn icon-btn ghost', text: '←', onclick: () => this.showTitle() }),
+        backBtn(() => this.showTitle()),
         h('div', { class: 'screen-title', text: t('settings.title') }),
       ]),
     )

@@ -212,6 +212,18 @@ async function main(): Promise<void> {
     const title = await page.textContent(`#screen-${label} .screen-title`).catch(() => null)
     const bodyLen = ((await page.textContent(`#screen-${label} .screen-body`)) ?? '').length
     console.log(`screen ${label}: title=${title} bodyLen=${bodyLen}`)
+    console.log(`  svg icons rendered:`, await page.locator(`#screen-${label} svg.ico-svg`).count())
+    console.log(`  unresolved icon text:`, await page.evaluate((l) => {
+      const bad = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/u
+      const hits: string[] = []
+      document.querySelectorAll(`#screen-${l} *`).forEach((el) => {
+        for (const c of el.textContent ?? '') if (bad.test(c)) hits.push(c)
+      })
+      return hits.join('')
+    }, label))
+    if (label === 'lab' || label === 'codex' || label === 'achievements') {
+      await page.screenshot({ path: `dist-test/smoke-svg-${label}.png` })
+    }
   }
 
   await page.goto(URL_BASE, { waitUntil: 'load' })

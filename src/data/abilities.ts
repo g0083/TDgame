@@ -9,7 +9,7 @@ export const ABILITIES: AbilityDef[] = [
     descJa: '場中の敵を2.5秒完全凍結。',
     charges: 3,
     cooldown: 45,
-    icon: '❄️',
+    icon: 'snowflake',
   },
   {
     id: 'airstrike',
@@ -19,7 +19,7 @@ export const ABILITIES: AbilityDef[] = [
     descJa: '経路の最大区間に大ダメージ。',
     charges: 3,
     cooldown: 40,
-    icon: '💣',
+    icon: 'bomb',
   },
   {
     id: 'meteor',
@@ -29,7 +29,7 @@ export const ABILITIES: AbilityDef[] = [
     descJa: 'フィールド全体に隕石を6回落下の。',
     charges: 2,
     cooldown: 60,
-    icon: '☄️',
+    icon: 'meteor',
   },
   {
     id: 'rush',
@@ -39,7 +39,7 @@ export const ABILITIES: AbilityDef[] = [
     descJa: '全タワーの攻撃速度が8秒間2倍。',
     charges: 3,
     cooldown: 50,
-    icon: '🔥',
+    icon: 'flame',
   },
   {
     id: 'repair',
@@ -49,7 +49,7 @@ export const ABILITIES: AbilityDef[] = [
     descJa: 'ライフを5回復し弾をすべて除去。',
     charges: 2,
     cooldown: 70,
-    icon: '🔧',
+    icon: 'wrench',
   },
 ]
 
