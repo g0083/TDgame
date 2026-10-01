@@ -11,6 +11,8 @@
     "preview": "vite preview --port 4173",
     "icons": "pwa-assets-generator",
     "test:balance": "esbuild scripts/headless.ts --bundle --platform=node --format=esm --outfile=dist-test/headless.mjs --log-level=error && node dist-test/headless.mjs",
+    "test:subpath": "esbuild scripts/test-subpath.ts --bundle --platform=node --format=esm --packages=external --outfile=dist-test/subpath.mjs --log-level=error && node dist-test/subpath.mjs",
+    "test:live": "esbuild scripts/test-live.ts --bundle --platform=node --format=esm --packages=external --outfile=dist-test/live.mjs --log-level=error && node dist-test/live.mjs",
     "test:smoke": "npm run build && esbuild scripts/smoke.ts --bundle --platform=node --format=esm --packages=external --outfile=dist-test/smoke.mjs --log-level=error && node dist-test/smoke.mjs"
   },
   "devDependencies": {

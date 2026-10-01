@@ -45,8 +45,10 @@ npm run typecheck  # TypeScript の型検査
 npm run build      # 型検査 + 本番ビルド + Service Worker 生成
 npm run preview    # dist/ をローカル確認 (Service Worker も動作)
 npm run test:balance  # ヘッドレスで全ステージ・エンドレス・デイリーを自動シミュレーション
+npm run test:subpath  # ビルド結果を /TDgame/ サブパス配信して検証（Pages 相当）
+npm run test:live     # 公開済み URL (g0083.github.io/TDgame/) に直接アクセスして検証
 npm run test:smoke    # Playwright で実ブラウザのスモークテスト
-npm run icons      # PWA アイコンの再生成 (source.svg から)
+npm run icons          # PWA アイコンの再生成 (source.svg から)
 ```
 
 ## PWA について
@@ -64,14 +66,16 @@ Service Worker には HTTPS (または `localhost`) が必要です。
 ### GitHub Pages
 
 `.github/workflows/deploy-pages.yml` に自動デプロイ用のワークフローを同梱しています。
-
-1. リポジトリの **Settings → Pages** を開く
-2. **Build and deployment → Source** を **「GitHub Actions」** に設定
-3. `main` ブランチへ push するたびに自動デプロイされる
+`main` ブランチへ push するたびに **ビルド → 公開** が自動で走ります。
 
 このリポジトリ（`g0083/TDgame`）はプロジェクトサイトなので、公開 URL は
-`https://g0083.github.io/TDgame/` になります。ワークフローは `VITE_BASE=/TDgame/` を
+**https://g0083.github.io/TDgame/** になります。ワークフローは `VITE_BASE=/TDgame/` を
 設定するため、自動的にサブパス配信に対応します。
+
+> **Settings → Pages の手動設定は不要です。**
+> 初回のデプロイ時に `actions/deploy-pages` が Pages を自動有効化します。
+> （`actions/configure-pages` は Pages 有効化前に Pages API を参照して 404 で
+> 失敗するため、使用していません。）
 
 手動でビルドする場合は同じ環境変数を渡してください。
 
