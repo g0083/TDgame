@@ -49,6 +49,7 @@ npm run preview    # dist/ をローカル確認 (Service Worker も動作)
 npm run test:balance  # ヘッドレスで全ステージ・エンドレス・デイリーを自動シミュレーション
 npm run test:subpath  # ビルド結果を /TDgame/ サブパス配信して検証（Pages 相当）
 npm run test:live     # 公開済み URL (g0083.github.io/TDgame/) に直接アクセスして検証
+npm run test:pos       # タワーアイコンのマス中心への整列をピクセル計測で検証
 npm run test:smoke    # Playwright で実ブラウザのスモークテスト
 npm run icons          # PWA アイコンの再生成 (source.svg から)
 ```
