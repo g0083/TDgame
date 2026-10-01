@@ -1,0 +1,25 @@
+{
+  "name": "aegis-td",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Aegis TD - Simple Tower Defense PWA",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 4173",
+    "icons": "pwa-assets-generator",
+    "test:balance": "esbuild scripts/headless.ts --bundle --platform=node --format=esm --outfile=dist-test/headless.mjs --log-level=error && node dist-test/headless.mjs",
+    "test:smoke": "npm run build && esbuild scripts/smoke.ts --bundle --platform=node --format=esm --packages=external --outfile=dist-test/smoke.mjs --log-level=error && node dist-test/smoke.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@vite-pwa/assets-generator": "^1.0.4",
+    "esbuild": "^0.25.0",
+    "playwright": "^1.55.0",
+    "typescript": "~5.9.0",
+    "vite": "^7.1.0",
+    "vite-plugin-pwa": "^1.0.0"
+  }
+}
